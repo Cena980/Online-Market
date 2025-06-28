@@ -1,33 +1,38 @@
-import { Product, Category } from '../types';
+import { Product, Category } from '../lib/api';
 
 export const categories: Category[] = [
   {
     id: '1',
     name: 'Electronics',
-    image: 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    productCount: 156
+    image_url: 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
+    is_active: true,
+    created_at: new Date().toISOString()
   },
   {
     id: '2',
     name: 'Fashion',
-    image: 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    productCount: 234
+    image_url: 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
+    is_active: true,
+    created_at: new Date().toISOString()
   },
   {
     id: '3',
     name: 'Home & Garden',
-    image: 'https://images.pexels.com/photos/1080721/pexels-photo-1080721.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    productCount: 89
+    image_url: 'https://images.pexels.com/photos/1080721/pexels-photo-1080721.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
+    is_active: true,
+    created_at: new Date().toISOString()
   },
   {
     id: '4',
     name: 'Sports',
-    image: 'https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
-    productCount: 67
+    image_url: 'https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2',
+    is_active: true,
+    created_at: new Date().toISOString()
   }
 ];
 
-export const products: Product[] = [
+// Mock products for fallback when API is not available
+export const products: any[] = [
   {
     id: '1',
     name: 'Wireless Bluetooth Headphones',

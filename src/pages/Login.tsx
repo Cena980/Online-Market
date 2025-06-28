@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Login: React.FC = () => {
@@ -12,7 +12,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { login } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,11 +28,11 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      const success = await login(formData.email, formData.password);
-      if (success) {
-        navigate('/');
+      const { error } = await signIn(formData.email, formData.password);
+      if (error) {
+        setError(error);
       } else {
-        setError('Invalid email or password');
+        navigate('/');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -64,8 +64,9 @@ const Login: React.FC = () => {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
               </div>
             )}
 
@@ -83,6 +84,7 @@ const Login: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className="input-field"
+                  placeholder="Enter your email"
                 />
               </div>
             </div>
@@ -101,6 +103,7 @@ const Login: React.FC = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   className="input-field pr-10"
+                  placeholder="Enter your password"
                 />
                 <button
                   type="button"
@@ -153,14 +156,18 @@ const Login: React.FC = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Account</span>
+                <span className="px-2 bg-white text-gray-500">Demo Accounts</span>
               </div>
             </div>
 
             <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">
-                Use any email and password to sign in
+              <p className="text-sm text-gray-600 mb-2">
+                Try these demo accounts:
               </p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <div>Customer: customer@demo.com / password123</div>
+                <div>Business: business@demo.com / password123</div>
+              </div>
             </div>
           </div>
         </div>

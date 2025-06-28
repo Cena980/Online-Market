@@ -1,28 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-
-interface UserProfile {
-  id: string;
-  user_type: 'customer' | 'business_owner';
-  full_name: string;
-  phone: string | null;
-  avatar_url: string | null;
-}
+import { authAPI, User } from '../lib/api';
 
 interface AuthState {
   user: User | null;
-  profile: UserProfile | null;
-  session: Session | null;
+  token: string | null;
   loading: boolean;
 }
 
 interface AuthContextType {
   state: AuthState;
-  signUp: (email: string, password: string, fullName: string, userType: 'customer' | 'business_owner') => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, userType: 'customer' | 'business_owner') => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signOut: () => void;
+  updateProfile: (updates: Partial<User>) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,109 +20,60 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     user: null,
-    profile: null,
-    session: null,
+    token: null,
     loading: true,
   });
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setState(prev => ({ ...prev, session, user: session?.user ?? null }));
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-      } else {
-        setState(prev => ({ ...prev, loading: false }));
+    // Check for stored token on app start
+    const storedToken = localStorage.getItem('auth_token');
+    if (storedToken) {
+      const { userId, error } = authAPI.verifyToken(storedToken);
+      if (!error && userId) {
+        authAPI.getCurrentUser()
+          .then(({ user }) => {
+            setState({ user, token: storedToken, loading: false });
+          })
+          .catch(() => {
+            localStorage.removeItem('auth_token');
+            setState(prev => ({ ...prev, loading: false }));
+          });
+        return;
       }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setState(prev => ({ ...prev, session, user: session?.user ?? null }));
-      
-      if (session?.user) {
-        await fetchUserProfile(session.user.id);
-      } else {
-        setState(prev => ({ ...prev, profile: null, loading: false }));
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-
-      setState(prev => ({ ...prev, profile: data, loading: false }));
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      setState(prev => ({ ...prev, loading: false }));
+      // Invalid token, remove it
+      localStorage.removeItem('auth_token');
     }
-  };
+    setState(prev => ({ ...prev, loading: false }));
+  }, []);
 
   const signUp = async (email: string, password: string, fullName: string, userType: 'customer' | 'business_owner') => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            user_type: userType,
-          },
-        },
-      });
-
-      return { error };
-    } catch (error) {
-      return { error };
+      const { user, token } = await authAPI.register(email, password, fullName, userType);
+      setState({ user, token, loading: false });
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Registration failed' };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      return { error };
-    } catch (error) {
-      return { error };
+      const { user, token } = await authAPI.login(email, password);
+      setState({ user, token, loading: false });
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'Login failed' };
     }
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = () => {
+    authAPI.logout();
+    setState({ user: null, token: null, loading: false });
   };
 
-  const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!state.user) return { error: 'No user logged in' };
-
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update(updates)
-        .eq('id', state.user.id);
-
-      if (!error) {
-        setState(prev => ({
-          ...prev,
-          profile: prev.profile ? { ...prev.profile, ...updates } : null,
-        }));
-      }
-
-      return { error };
-    } catch (error) {
-      return { error };
-    }
+  const updateProfile = async (updates: Partial<User>) => {
+    // This would need to be implemented in the API
+    return { error: 'Profile update not implemented yet' };
   };
 
   return (

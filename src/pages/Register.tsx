@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Register: React.FC = () => {
@@ -9,16 +9,18 @@ const Register: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    userType: 'customer' as 'customer' | 'business_owner',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
-  const { register } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -29,6 +31,7 @@ const Register: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccess('');
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -36,12 +39,27 @@ const Register: React.FC = () => {
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const success = await register(formData.name, formData.email, formData.password);
-      if (success) {
-        navigate('/');
+      const { error } = await signUp(
+        formData.email, 
+        formData.password, 
+        formData.name, 
+        formData.userType
+      );
+      
+      if (error) {
+        setError(error);
       } else {
-        setError('Registration failed. Please try again.');
+        setSuccess('Account created successfully! Redirecting...');
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -73,8 +91,16 @@ const Register: React.FC = () => {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+                <span className="text-sm">{success}</span>
               </div>
             )}
 
@@ -92,6 +118,7 @@ const Register: React.FC = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   className="input-field"
+                  placeholder="Enter your full name"
                 />
               </div>
             </div>
@@ -110,8 +137,33 @@ const Register: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   className="input-field"
+                  placeholder="Enter your email"
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="userType" className="block text-sm font-medium text-gray-700">
+                Account Type
+              </label>
+              <div className="mt-1">
+                <select
+                  id="userType"
+                  name="userType"
+                  value={formData.userType}
+                  onChange={handleInputChange}
+                  className="input-field"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="business_owner">Business Owner</option>
+                </select>
+              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                {formData.userType === 'customer' 
+                  ? 'Shop and purchase products' 
+                  : 'Sell products and manage your business'
+                }
+              </p>
             </div>
 
             <div>
@@ -128,6 +180,7 @@ const Register: React.FC = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   className="input-field pr-10"
+                  placeholder="Create a password"
                 />
                 <button
                   type="button"
@@ -141,6 +194,9 @@ const Register: React.FC = () => {
                   )}
                 </button>
               </div>
+              <p className="mt-1 text-sm text-gray-500">
+                Must be at least 6 characters long
+              </p>
             </div>
 
             <div>
@@ -157,6 +213,7 @@ const Register: React.FC = () => {
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   className="input-field pr-10"
+                  placeholder="Confirm your password"
                 />
                 <button
                   type="button"
@@ -182,23 +239,6 @@ const Register: React.FC = () => {
               </button>
             </div>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Registration</span>
-              </div>
-            </div>
-
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">
-                Use any name, email and password to create an account
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

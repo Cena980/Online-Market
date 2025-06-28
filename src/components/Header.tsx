@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, User, Menu, X } from 'lucide-react';
+import { Search, ShoppingCart, User, Menu, X, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,7 +8,7 @@ const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { state: cartState } = useCart();
-  const { state: authState, logout } = useAuth();
+  const { state: authState, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -19,8 +19,8 @@ const Header: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    signOut();
     navigate('/');
   };
 
@@ -52,6 +52,13 @@ const Header: React.FC = () => {
 
           {/* Navigation Icons */}
           <div className="flex items-center space-x-4">
+            {/* Business Dashboard Link for Business Owners */}
+            {authState.user?.user_type === 'business_owner' && (
+              <Link to="/business" className="p-2 text-gray-600 hover:text-primary-600 transition-colors">
+                <Package className="h-6 w-6" />
+              </Link>
+            )}
+
             {/* Cart */}
             <Link to="/cart" className="relative p-2 text-gray-600 hover:text-primary-600 transition-colors">
               <ShoppingCart className="h-6 w-6" />
@@ -64,15 +71,17 @@ const Header: React.FC = () => {
 
             {/* User Menu */}
             <div className="relative">
-              {authState.isAuthenticated ? (
+              {authState.user && !authState.loading ? (
                 <div className="flex items-center space-x-2">
                   <Link to="/profile" className="flex items-center space-x-2 p-2 text-gray-600 hover:text-primary-600 transition-colors">
-                    {authState.user?.avatar ? (
-                      <img src={authState.user.avatar} alt="Profile" className="h-6 w-6 rounded-full" />
+                    {authState.user?.avatar_url ? (
+                      <img src={authState.user.avatar_url} alt="Profile" className="h-6 w-6 rounded-full" />
                     ) : (
                       <User className="h-6 w-6" />
                     )}
-                    <span className="hidden sm:block text-sm font-medium">{authState.user?.name}</span>
+                    <span className="hidden sm:block text-sm font-medium">
+                      {authState.user?.full_name || 'User'}
+                    </span>
                   </Link>
                   <button
                     onClick={handleLogout}
@@ -155,6 +164,11 @@ const Header: React.FC = () => {
               <Link to="/products?category=Sports" className="block py-2 text-gray-600 hover:text-primary-600 transition-colors font-medium">
                 Sports
               </Link>
+              {authState.user?.user_type === 'business_owner' && (
+                <Link to="/business" className="block py-2 text-gray-600 hover:text-primary-600 transition-colors font-medium">
+                  Business Dashboard
+                </Link>
+              )}
             </nav>
           </div>
         )}

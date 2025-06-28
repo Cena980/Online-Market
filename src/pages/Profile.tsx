@@ -5,15 +5,24 @@ import { useNavigate } from 'react-router-dom';
 
 const Profile: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
-  const { state: authState, logout } = useAuth();
+  const { state: authState, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    signOut();
     navigate('/');
   };
 
-  if (!authState.isAuthenticated) {
+  if (authState.loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!authState.user) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Please sign in</h1>
@@ -39,9 +48,9 @@ const Profile: React.FC = () => {
         <div className="lg:col-span-1">
           <div className="card p-6">
             <div className="text-center mb-6">
-              {authState.user?.avatar ? (
+              {authState.user?.avatar_url ? (
                 <img
-                  src={authState.user.avatar}
+                  src={authState.user.avatar_url}
                   alt="Profile"
                   className="w-20 h-20 rounded-full mx-auto mb-4"
                 />
@@ -50,8 +59,13 @@ const Profile: React.FC = () => {
                   <User className="h-10 w-10 text-white" />
                 </div>
               )}
-              <h2 className="text-xl font-semibold text-gray-900">{authState.user?.name}</h2>
-              <p className="text-gray-600">{authState.user?.email}</p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {authState.user?.full_name || 'User'}
+              </h2>
+              <p className="text-gray-600">{authState.user.email}</p>
+              <span className="inline-block mt-2 px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded-full">
+                {authState.user?.user_type === 'business_owner' ? 'Business Owner' : 'Customer'}
+              </span>
             </div>
 
             <nav className="space-y-2">
@@ -93,21 +107,22 @@ const Profile: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        First Name
+                        Full Name
                       </label>
                       <input
                         type="text"
-                        defaultValue="John"
+                        defaultValue={authState.user?.full_name || ''}
                         className="input-field"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Last Name
+                        Phone Number
                       </label>
                       <input
-                        type="text"
-                        defaultValue="Doe"
+                        type="tel"
+                        defaultValue={authState.user?.phone || ''}
+                        placeholder="+1 (555) 123-4567"
                         className="input-field"
                       />
                     </div>
@@ -118,18 +133,23 @@ const Profile: React.FC = () => {
                     </label>
                     <input
                       type="email"
-                      defaultValue={authState.user?.email}
+                      defaultValue={authState.user?.email || ''}
                       className="input-field"
+                      disabled
                     />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Email cannot be changed. Contact support if needed.
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
+                      Account Type
                     </label>
                     <input
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
+                      type="text"
+                      value={authState.user?.user_type === 'business_owner' ? 'Business Owner' : 'Customer'}
                       className="input-field"
+                      disabled
                     />
                   </div>
                   <button type="submit" className="btn-primary">
@@ -142,37 +162,18 @@ const Profile: React.FC = () => {
             {activeTab === 'orders' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">Order History</h3>
-                <div className="space-y-4">
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Order #12345</h4>
-                        <p className="text-sm text-gray-600">Placed on January 15, 2025</p>
-                      </div>
-                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
-                        Delivered
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">3 items • $159.97</p>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      View Details
-                    </button>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Order #12344</h4>
-                        <p className="text-sm text-gray-600">Placed on January 10, 2025</p>
-                      </div>
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-                        Shipped
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2">1 item • $79.99</p>
-                    <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      Track Package
-                    </button>
-                  </div>
+                <div className="text-center py-12">
+                  <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No orders yet</p>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Your order history will appear here
+                  </p>
+                  <button
+                    onClick={() => navigate('/products')}
+                    className="btn-primary"
+                  >
+                    Start Shopping
+                  </button>
                 </div>
               </div>
             )}

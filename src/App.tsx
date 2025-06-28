@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Profile from './pages/Profile'
+import BusinessDashboard from './pages/BusinessDashboard'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/business" element={<BusinessDashboard />} />
         </Routes>
       </main>
       <Footer />

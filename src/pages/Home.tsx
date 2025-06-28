@@ -1,10 +1,54 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Truck, Shield, Headphones, RefreshCw } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
-import { featuredProducts, categories, saleProducts } from '../data/products';
+import { categoryAPI, productAPI, Product, Category } from '../lib/api';
 
 const Home: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [saleProducts, setSaleProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch categories
+        const categoriesResponse = await categoryAPI.getCategories();
+        setCategories(categoriesResponse.categories);
+
+        // Fetch featured products (first 4 products)
+        const featuredResponse = await productAPI.getProducts({ limit: 4 });
+        setFeaturedProducts(featuredResponse.products);
+
+        // Fetch sale products (products with original_price)
+        const allProductsResponse = await productAPI.getProducts({ limit: 50 });
+        const saleItems = allProductsResponse.products.filter((product: Product) => product.original_price);
+        setSaleProducts(saleItems.slice(0, 3));
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate product count for each category
+  const getCategoryProductCount = (categoryName: string) => {
+    // This would ideally come from the API, but for now we'll use a placeholder
+    return Math.floor(Math.random() * 200) + 50;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in">
       {/* Hero Section */}
@@ -93,14 +137,14 @@ const Home: React.FC = () => {
                 <div className="card hover:shadow-lg transition-shadow duration-300">
                   <div className="relative overflow-hidden">
                     <img
-                      src={category.image}
+                      src={category.image_url || 'https://images.pexels.com/photos/356056/pexels-photo-356056.jpeg?auto=compress&cs=tinysrgb&w=400&h=300&dpr=2'}
                       alt={category.name}
                       className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
                   <div className="p-4 text-center">
                     <h3 className="font-semibold text-gray-900 mb-1">{category.name}</h3>
-                    <p className="text-sm text-gray-600">{category.productCount} products</p>
+                    <p className="text-sm text-gray-600">{getCategoryProductCount(category.name)} products</p>
                   </div>
                 </div>
               </Link>
@@ -130,24 +174,26 @@ const Home: React.FC = () => {
       </section>
 
       {/* Sale Section */}
-      <section className="py-16 bg-red-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Special Offers</h2>
-            <p className="text-lg text-gray-600">Don't miss out on these amazing deals</p>
+      {saleProducts.length > 0 && (
+        <section className="py-16 bg-red-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Special Offers</h2>
+              <p className="text-lg text-gray-600">Don't miss out on these amazing deals</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {saleProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Link to="/products?sale=true" className="btn-primary bg-red-600 hover:bg-red-700">
+                View All Sale Items
+              </Link>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {saleProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <Link to="/products?sale=true" className="btn-primary bg-red-600 hover:bg-red-700">
-              View All Sale Items
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Newsletter Section */}
       <section className="py-16 bg-gray-900 text-white">

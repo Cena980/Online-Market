@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Filter, Grid, List } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
-import { products } from '../data/products';
+import { productAPI, categoryAPI, Product, Category } from '../lib/api';
 
 const Products: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -10,33 +10,51 @@ const Products: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const category = searchParams.get('category') || '';
   const searchQuery = searchParams.get('search') || '';
   const saleOnly = searchParams.get('sale') === 'true';
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch categories
+        const categoriesResponse = await categoryAPI.getCategories();
+        setCategories(categoriesResponse.categories);
+
+        // Fetch products with filters
+        const filters: any = {};
+        if (category) filters.category = category;
+        if (searchQuery) filters.search = searchQuery;
+        
+        const productsResponse = await productAPI.getProducts(filters);
+        setProducts(productsResponse.products);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [category, searchQuery]);
+
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
 
-    // Filter by category
-    if (category) {
-      filtered = filtered.filter(product => product.category === category);
-    }
+    // Filter by selected category (from sidebar)
     if (selectedCategory) {
-      filtered = filtered.filter(product => product.category === selectedCategory);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      filtered = filtered.filter(product => product.category_name === selectedCategory);
     }
 
     // Filter by sale
     if (saleOnly) {
-      filtered = filtered.filter(product => product.originalPrice);
+      filtered = filtered.filter(product => product.original_price);
     }
 
     // Filter by price range
@@ -52,7 +70,7 @@ const Products: React.FC = () => {
         case 'price-high':
           return b.price - a.price;
         case 'rating':
-          return b.rating - a.rating;
+          return 0; // No rating data yet
         case 'name':
         default:
           return a.name.localeCompare(b.name);
@@ -60,9 +78,16 @@ const Products: React.FC = () => {
     });
 
     return filtered;
-  }, [category, selectedCategory, searchQuery, saleOnly, priceRange, sortBy]);
+  }, [products, selectedCategory, saleOnly, priceRange, sortBy]);
 
-  const categories = Array.from(new Set(products.map(product => product.category)));
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading products...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 fade-in">
@@ -91,16 +116,16 @@ const Products: React.FC = () => {
                   All Categories
                 </label>
                 {categories.map(cat => (
-                  <label key={cat} className="flex items-center">
+                  <label key={cat.id} className="flex items-center">
                     <input
                       type="radio"
                       name="category"
-                      value={cat}
-                      checked={selectedCategory === cat}
+                      value={cat.name}
+                      checked={selectedCategory === cat.name}
                       onChange={(e) => setSelectedCategory(e.target.value)}
                       className="mr-2"
                     />
-                    {cat}
+                    {cat.name}
                   </label>
                 ))}
               </div>
