@@ -1,16 +1,28 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
+
+interface UserProfile {
+  id: string;
+  user_type: 'customer' | 'business_owner';
+  full_name: string;
+  phone: string | null;
+  avatar_url: string | null;
+}
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
+  profile: UserProfile | null;
+  session: Session | null;
+  loading: boolean;
 }
 
 interface AuthContextType {
   state: AuthState;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  signUp: (email: string, password: string, fullName: string, userType: 'customer' | 'business_owner') => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,58 +30,113 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     user: null,
-    isAuthenticated: false,
+    profile: null,
+    session: null,
+    loading: true,
   });
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock successful login
-    const user: User = {
-      id: '1',
-      name: 'John Doe',
-      email: email,
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2'
-    };
-    
-    setState({
-      user,
-      isAuthenticated: true,
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setState(prev => ({ ...prev, session, user: session?.user ?? null }));
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setState(prev => ({ ...prev, loading: false }));
+      }
     });
-    
-    return true;
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setState(prev => ({ ...prev, session, user: session?.user ?? null }));
+      
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else {
+        setState(prev => ({ ...prev, profile: null, loading: false }));
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+
+      setState(prev => ({ ...prev, profile: data, loading: false }));
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      setState(prev => ({ ...prev, loading: false }));
+    }
   };
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock successful registration
-    const user: User = {
-      id: '1',
-      name: name,
-      email: email,
-      avatar: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=2'
-    };
-    
-    setState({
-      user,
-      isAuthenticated: true,
-    });
-    
-    return true;
+  const signUp = async (email: string, password: string, fullName: string, userType: 'customer' | 'business_owner') => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            user_type: userType,
+          },
+        },
+      });
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
   };
 
-  const logout = () => {
-    setState({
-      user: null,
-      isAuthenticated: false,
-    });
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!state.user) return { error: 'No user logged in' };
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update(updates)
+        .eq('id', state.user.id);
+
+      if (!error) {
+        setState(prev => ({
+          ...prev,
+          profile: prev.profile ? { ...prev.profile, ...updates } : null,
+        }));
+      }
+
+      return { error };
+    } catch (error) {
+      return { error };
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ state, login, register, logout }}>
+    <AuthContext.Provider value={{ state, signUp, signIn, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
